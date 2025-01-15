@@ -13,13 +13,16 @@ __webpack_require__.r(__webpack_exports__);
 
 var init = function init(_) {
   getTrees();
+  doSearch();
   var createForm = document.querySelector('[data-form-create]');
   var deleteForm = document.querySelector('[data-form-delete]');
+  var editForm = document.querySelector('[data-form-edit]');
   createForm.querySelector('button').addEventListener('click', function (_) {
     var inputs = createForm.querySelectorAll('[name]');
     var data = {};
     inputs.forEach(function (input) {
       data[input.getAttribute('name')] = input.value;
+      input.value = '';
     });
     axios__WEBPACK_IMPORTED_MODULE_0__["default"].post(URL + 'sodinti-medi', data).then(function (res) {
       console.log(res.data);
@@ -38,12 +41,43 @@ var init = function init(_) {
       console.log('Klaida trinant duomenis iš DB');
     });
   });
+  editForm.querySelector('button').addEventListener('click', function (_) {
+    var inputs = editForm.querySelectorAll('[name]');
+    var data = {};
+    inputs.forEach(function (input) {
+      data[input.getAttribute('name')] = input.value;
+      input.value = '';
+    });
+    var id = data.id;
+    delete data.id;
+    axios__WEBPACK_IMPORTED_MODULE_0__["default"].put(URL + 'persodinti-medi/' + id, data).then(function (res) {
+      console.log(res.data);
+      getTrees();
+    })["catch"](function (error) {
+      console.log('Klaida siunčiant duomenis į DB');
+    });
+  });
 };
 var URL = 'http://localhost:3000/';
-var getTrees = function getTrees(_) {
-  axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(URL + 'medziu-sarasas').then(function (res) {
+var doSearch = function doSearch(_) {
+  var searchField = document.querySelector('[data-search]');
+  searchField.addEventListener('input', function (_) {
+    var q = searchField.value;
+    if (q.length < 2) {
+      getTrees(1);
+      return;
+    }
+    getTrees(1, q);
+  });
+};
+var getTrees = function getTrees() {
+  var ap = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1;
+  var q = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '';
+  var qurl = q ? '?q=' + q : '';
+  axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(URL + 'medziu-sarasas/' + ap + qurl).then(function (res) {
     console.log(res.data);
     renderTrees(res.data);
+    getPaginator(ap, q);
   })["catch"](function (error) {
     console.log('Klaida gaunant duomenis iš DB');
   });
@@ -60,6 +94,55 @@ var renderTrees = function renderTrees(trees) {
     li.querySelector('[data-list-type]').innerText = tree.type;
     listUL.appendChild(li);
   });
+};
+var getPaginator = function getPaginator(ap) {
+  var q = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '';
+  var qurl = q ? '?q=' + q : '';
+  axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(URL + 'medziu-skaicius' + qurl).then(function (res) {
+    console.log(res.data);
+    renderPaginator(res.data.pages, ap, q);
+  })["catch"](function (error) {
+    console.log('Klaida gaunant duomenis iš DB');
+  });
+};
+var renderPaginator = function renderPaginator(pages, activPage, q) {
+  var paginator = document.querySelector('div[data-paginator]');
+  paginator.innerHTML = '';
+  var span;
+  span = document.createElement('span');
+  span.innerText = 'Atgal';
+  if (activPage !== 1) {
+    span.classList.add('active');
+    span.addEventListener('click', function (_) {
+      getTrees(activPage - 1, q);
+    });
+  }
+  paginator.appendChild(span);
+  var _loop = function _loop(i) {
+    var span = document.createElement('span');
+    span.innerText = i;
+    if (i !== activPage) {
+      span.classList.add('active');
+      span.addEventListener('click', function (_) {
+        getTrees(i, q);
+      });
+    } else {
+      span.classList.add('current');
+    }
+    paginator.appendChild(span);
+  };
+  for (var i = 1; i <= pages; i++) {
+    _loop(i);
+  }
+  span = document.createElement('span');
+  span.innerText = 'Pirmyn';
+  if (activPage !== pages) {
+    span.classList.add('active');
+    span.addEventListener('click', function (_) {
+      getTrees(activPage + 1, q);
+    });
+  }
+  paginator.appendChild(span);
 };
 getTrees();
 init();

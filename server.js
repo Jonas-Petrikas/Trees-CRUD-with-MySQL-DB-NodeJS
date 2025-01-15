@@ -24,29 +24,89 @@ const con = mysql.createConnection({
 //     console.log('Prisijungimas prie DB buvo sėkmingas');
 // });
 
-app.get('/medziu-sarasas', (req, res) => {
+app.get('/medziu-sarasas/:page', (req, res) => {
 
     // SELECT column1, column2, ...
     // FROM table_name;
 
-    const sql = `
-        SELECT id, name, height, type
-        FROM trees
-         -- WHERE type <> 'Lapuotis' AND height > 10
-         -- ORDER BY type DESC, height DESC
-         ORDER BY name
-          -- LIMIT 1,3
-    `;
+    // SELECT column1, column2, ...
+    // FROM table_name
+    // WHERE columnN LIKE pattern;
+
+    let sql;
+    let params;
+    const page = parseInt(req.params.page) || 1;
+    const perPage = 3;
+    const limit = (page - 1) * perPage;
+    const q = req.query.q || '';
+
+
+    if (!q) {
+        sql = `
+            SELECT id, name, height, type
+            FROM trees
+            -- WHERE type = 'Lapuotis' AND height > 10
+            -- ORDER BY type DESC, height
+            ORDER BY name
+            LIMIT ?, ?
+        `;
+        params = [limit, perPage];
+    } else {
+        sql = `
+            SELECT id, name, height, type
+            FROM trees
+            WHERE name LIKE ?
+            ORDER BY name
+            LIMIT ?, ?
+        `;
+        params = [`%${q}%`, limit, perPage];
+    }
 
     //
 
-    con.query(sql, (err, result) => {
+    con.query(sql, params, (err, result) => {
         if (err) {
             console.log('Klaida gaunant duomenis iš DB');
             res.status(400).json({ error: 'Klaida gaunant duomenis' })
             return;
         }
         res.json(result);
+    });
+});
+
+app.get('/medziu-skaicius', (req, res) => {
+
+    // SELECT COUNT(column_name)
+    // FROM table_name;
+
+    let sql;
+    let params;
+    const q = req.query.q || '';
+
+    if (!q) {
+        sql = `
+        SELECT COUNT(id) AS total
+        FROM trees
+    `;
+        params = [];
+    } else {
+        sql = `
+        SELECT COUNT(id) AS total
+        FROM trees
+        WHERE name LIKE ?
+    `;
+        params = [`%${q}%`];
+    }
+
+    con.query(sql, params, (err, result) => {
+        if (err) {
+            console.log('Klaida gaunant duomenis iš DB');
+            res.status(400).json({ error: 'Klaida gaunant duomenis iš DB' });
+            return;
+        }
+        const perPage = 3;
+        const pages = Math.ceil(result[0].total / perPage)
+        res.json({ pages });
     });
 });
 
@@ -104,6 +164,32 @@ app.delete('/iskasti-medi/:id', (req, res) => {
     });
 
 });
+
+app.put('/persodinti-medi/:id', (req, res) => {
+
+    // UPDATE table_name
+    // SET column1 = value1, column2 = value2, ...
+    // WHERE condition;
+
+    const id = req.params.id;
+    const { name, height, type } = req.body;
+
+    const sql = `
+        UPDATE trees
+        SET name = ?, height = ?, type = ?
+        WHERE id = ?
+    `;
+
+    con.query(sql, [name, height, type, id], (err, result) => {
+        if (err) {
+            console.log('Klaida atnaujinant duomenis DB', err);
+            res.status(400).json({ error: 'Klaida atnaujinant duomenis DB' });
+            return;
+        }
+        res.json({ success: 'Medis sėkmingai persodintas DB', result });
+    });
+});
+
 
 
 
