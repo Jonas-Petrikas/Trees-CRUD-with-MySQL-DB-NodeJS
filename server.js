@@ -13,9 +13,50 @@ const con = mysql.createConnection({
     host: 'localhost',
     user: 'root',
     password: '',
-    database: 'miskas2'
+    database: 'clients'
 });
 
+app.get('/klientai/:type', (req, res) => {
+
+    // SELECT *
+    // FROM Clients
+    // INNER JOIN Phones
+    // ON Clients.id = Phones.client_id;
+
+    let jt = '';
+
+    switch (req.params.type) {
+        case 'inner':
+            jt = 'INNER';
+            break;
+        case 'left':
+            jt = 'LEFT';
+            break;
+        case 'right':
+            jt = 'RIGHT';
+            break;
+        default:
+            jt = 'INNER';
+
+    }
+
+    const sql = `
+        SELECT c.id, name, p.id AS pid, number, client_id
+        FROM clients AS c
+        ${jt} JOIN phones AS p
+        ON c.id = p.client_id
+    `;
+
+    con.query(sql, (err, result) => {
+        if (err) {
+            console.log('Klaida gaunant duomenis iš DB');
+            res.status(400).json({ error: 'Klaida gaunant duomenis iš DB' });
+            return;
+        }
+        res.json(result);
+    });
+
+});
 // con.connect(err => {
 //     if (err) {
 //         console.log('Klaida prisijungiant prie DB');
